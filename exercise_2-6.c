@@ -2,9 +2,9 @@
 
 int setbits(int x, int p, int n, int y) {
     int r = p-n+1;
-    int x_mask = ~0 << (p+1) | ~(~0 << r);
-    int cleared_x = x & x_mask;
-    int aligned_y = (y & ~(~0 << r)) << r;
+    int mask = ~0u << (p+1) | ~(~0u << r);
+    int cleared_x = x & mask;
+    int aligned_y = (y & ~(~0u << n)) << r;
     return aligned_y | cleared_x;
 }
 
