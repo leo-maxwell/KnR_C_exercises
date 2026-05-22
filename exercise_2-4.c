@@ -18,11 +18,12 @@ void squeeze(char s1[], char s2[]) {
         }
         i++;
     }
+    s1[j] = '\0';
 }
 
 int main() {
     char s1[] = "Hello World!";
     char s2[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
     squeeze(s1, s2);
-    printf("%s", s1);
+    printf("%s\n", s1);
 }
