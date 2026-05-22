@@ -7,7 +7,7 @@ void squeeze(char s1[], char s2[]) {
     while (s1[i] != '\0') {
         k = 0;
         has = false;
-        while (s2[k] != '\0') {
+        while (s2[k++] != '\0') {
             if (s1[i] == s2[k]) {
                 has = true;
                 break;
