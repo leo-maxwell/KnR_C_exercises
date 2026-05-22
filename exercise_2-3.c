@@ -1,7 +1,7 @@
 #include <stdio.h>
 
 unsigned long long htoi(char s[]) {
-    int i;
+    int i = 0;
     unsigned long long n = 0;
     if (s[i] == '0' && (s[i+1] == 'x' || s[i+1] == 'X')) {
         i = 2;
