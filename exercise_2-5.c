@@ -1,7 +1,7 @@
 #include <stdio.h>
 
 int any(char s1[], char s2[]) {
-    int i = 0, j = 0, k = 0;
+    int i = 0, k = 0;
     while (s1[i] != '\0') {
         k = 0;
         while (s2[k++] != '\0') {
