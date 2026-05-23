@@ -2,10 +2,8 @@
 
 int invert(int x, int p, int n) {
     int r = p-n+1;
-    int mask = ~0u << (p+1) | ~(~0u << r);
-    int cleared_x = x & mask;
-    int aligned_flipped = ~x & ~mask;
-    return cleared_x | aligned_flipped;
+    int mask = ~(~0u << n) << r;
+    return x ^ mask;
 }
 
 int main() {
