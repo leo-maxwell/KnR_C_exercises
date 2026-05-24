@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <math.h>
 #include "calc.h"
 
 int main() {
@@ -25,15 +26,22 @@ int main() {
             case '/':
                 op2 = pop();
                 if (op2 == 0.0)
-                    printf("error: zero divisor");
+                    printf("error: zero divisor\n");
                 else
                     push(pop() / op2);
+                break;
+            case '%':
+                op2 = pop();
+                if (op2 == 0.0)
+                    printf("error: zero divisor\n");
+                else
+                    push(fmod(pop(), op2));
                 break;
             case '\n':
                 printf("\t%.8g\n", pop());
                 break;
             default:
-                printf("error: unknown command%s\n", s);
+                printf("error: unknown command %s\n", s);
                 break;
         }
     }
