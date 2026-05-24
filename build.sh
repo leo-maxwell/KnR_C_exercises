@@ -22,6 +22,7 @@ CFLAGS=(
 
 LDFLAGS=(
     -no-pie
+    -lm
 )
 
 ARGS=()
