@@ -1,11 +1,10 @@
 #!/usr/bin/env bash
 
-set -e
+set -euo pipefail
 
-CC=gcc
+CC=${CC:-gcc}
 ASM=0
 OUTPUT=""
-HAS_OUTPUT=0
 
 # Learning-oriented compiler flags
 CFLAGS=(
@@ -25,8 +24,19 @@ LDFLAGS=(
     -lm
 )
 
-ARGS=()
-SRC_FILES=()
+INPUTS=()
+EXTRA_ARGS=()
+
+is_build_input() {
+    case "$1" in
+        *.c|*.o|*.a|*.so)
+            return 0
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+}
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -34,40 +44,101 @@ while [[ $# -gt 0 ]]; do
             ASM=1
             shift
             ;;
+
         -o)
-            HAS_OUTPUT=1
-            OUTPUT="$2"
-            ARGS+=("$1" "$2")
+            if [[ $# -lt 2 ]]; then
+                echo "error: -o requires an output filename" >&2
+                exit 1
+            fi
+            OUTPUT=$2
             shift 2
             ;;
-        *.c)
-            SRC_FILES+=("$1")
-            ARGS+=("$1")
+
+        --output)
+            if [[ $# -lt 2 ]]; then
+                echo "error: --output requires an output filename" >&2
+                exit 1
+            fi
+            OUTPUT=$2
+            shift 2
+            ;;
+
+        --output=*)
+            OUTPUT=${1#--output=}
             shift
             ;;
+
         *)
-            ARGS+=("$1")
+            if is_build_input "$1"; then
+                INPUTS+=("$1")
+            else
+                EXTRA_ARGS+=("$1")
+            fi
             shift
             ;;
     esac
 done
 
-# If no -o specified, infer output name
-if [[ $HAS_OUTPUT -eq 0 ]]; then
-    if [[ ${#SRC_FILES[@]} -eq 1 ]]; then
-        base="${SRC_FILES[0]%.c}"
-        OUTPUT="$base"
-        ARGS+=("-o" "$OUTPUT")
+shopt -s nullglob
+
+# Automatic mode:
+# If no explicit input files were given, use files from the current directory.
+if [[ ${#INPUTS[@]} -eq 0 ]]; then
+    C_SOURCES=(./*.c)
+    OBJECTS=()
+    STATIC_LIBS=(./*.a)
+    SHARED_LIBS=(./*.so)
+
+    # Include .o files, but avoid foo.o when foo.c also exists.
+    # Otherwise gcc foo.c foo.o usually causes duplicate symbol errors.
+    for obj in ./*.o; do
+        matching_c="${obj%.o}.c"
+
+        if [[ -e "$matching_c" ]]; then
+            continue
+        fi
+
+        OBJECTS+=("$obj")
+    done
+
+    INPUTS=(
+        "${C_SOURCES[@]}"
+        "${OBJECTS[@]}"
+        "${STATIC_LIBS[@]}"
+        "${SHARED_LIBS[@]}"
+    )
+
+    if [[ -z "$OUTPUT" ]]; then
+        OUTPUT=$(basename "$PWD")
     fi
 fi
 
-# Compile normally
-$CC "${CFLAGS[@]}" "${ARGS[@]}" "${LDFLAGS[@]}"
+if [[ ${#INPUTS[@]} -eq 0 ]]; then
+    echo "error: no .c, .o, .a, or .so files found" >&2
+    exit 1
+fi
 
-# Optionally generate assembly
+# If input files were given explicitly and no output was specified,
+# preserve the old behavior: name the binary after the first .c file.
+if [[ -z "$OUTPUT" ]]; then
+    OUTPUT=$(basename "$PWD")
+
+    for src in "${INPUTS[@]}"; do
+        if [[ "$src" == *.c ]]; then
+            base=$(basename "$src")
+            OUTPUT="${base%.c}"
+            break
+        fi
+    done
+fi
+
+$CC "${CFLAGS[@]}" "${EXTRA_ARGS[@]}" "${INPUTS[@]}" -o "$OUTPUT" "${LDFLAGS[@]}"
+
 if [[ $ASM -eq 1 ]]; then
-    for src in "${SRC_FILES[@]}"; do
-        base="${src%.c}"
-        $CC "${CFLAGS[@]}" -S -fverbose-asm "$src" -o "$base.s"
+    for src in "${INPUTS[@]}"; do
+        if [[ "$src" == *.c ]]; then
+            base="${src%.c}"
+            $CC "${CFLAGS[@]}" "${EXTRA_ARGS[@]}" -S -fverbose-asm "$src" -o "$base.s"
+        fi
     done
 fi
