@@ -9,12 +9,11 @@ int getop(char *s) {
     int k = 0; // current intra-token cursor position
     int c; // handy cache
     // handle the edge cases first
-    if (s[0] == EOF || s[0] == '\0') return EOF;
-    if (s[0] == '\n') return '\n';
+    if (s[0] == '\0') return EOF;
     // first handle single character case
     if (n == 1) {
         c = s[0];
-        if (!isdigit(c) && !isalpha(c) && c != ANS) {
+        if (!isdigit(c) && !isalpha(c) && c != ANS && c != '.') {
         // not number, not letter, not ANS, only single char possible
             return ONECHAROP;
         } else if (isalpha(c)) {
@@ -22,7 +21,7 @@ int getop(char *s) {
             return VARIABLE;
         } else if (c == ANS) {
             return ANS;
-        } else if (isdigit(c)) {
+        } else if (isdigit(c) || c == '.') {
             return NUMBER;
         } else {
             printf("getop: character not supported %c\n", c);
@@ -31,7 +30,7 @@ int getop(char *s) {
     } else {
     // commands and numbers
         c = s[0];
-        if (isalpha(s)) {
+        if (isalpha(c)) {
         // if longer than one char and starts with letter, then it must be commands
             if (strcmp(s, "sin") == 0) {
             return SIN;

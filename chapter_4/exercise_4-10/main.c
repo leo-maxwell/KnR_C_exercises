@@ -17,7 +17,7 @@ int main() {
     char *l = NULL; // line buffer
     size_t linecap = LINESIZE;
 
-    while (getline(&l, &linecap, stdin) != EOF) {
+    while (getline(&l, &linecap, stdin) != -1) {
         int i; // line index
         int j; // token index
         int k; // intra-token index
@@ -41,9 +41,16 @@ int main() {
                 i--; // an extra addition is guaranteed, remove it
             } else {
                 if (s[j] == NULL) {
-                    s[j] = malloc(sizeof(s) * OPSIZE);
+                    s[j] = malloc(sizeof(**s) * (OPSIZE + 1));
                 }
-                s[j][k++] = l[i];
+                if (k < OPSIZE) {
+                    s[j][k++] = l[i];
+                } else {
+                    s[j][k] = '\0';
+                    printf("error: token too long: starts with %s\n", s[j]);
+                    return 0;
+                }
+
             }
         }
         if (j >= LINE_TOKENS - 1) {
@@ -52,8 +59,7 @@ int main() {
                 return 0;
             }
         } else {
-        // the last newline will be missed by separation above, add it back
-            s[j] = "\n";
+            if(s[j] != NULL) s[j][k] = '\0'; // last token might not end with newline, add back
         }
 
         // token processing
@@ -65,14 +71,17 @@ int main() {
                 s[j][k] = s[j][k] >= 'A' && s[j][k] <= 'Z' ? s[j][k] - 'A' + 'a' : s[j][k];
             }
             type = getop(s[j]);
-            matching:
             switch (type) {
                 case NUMBER:
                     push(atof(s[j]));
                     break;
                 case VARIABLE:
                     last_var = s[j][0];
-                    type = getop(s[j+1]);
+                    if (j < tokens - 1) type = getop(s[j+1]);
+                    else {
+                        printf("error: unfinished input\n");
+                        return 0;
+                    }
                     if (type == EOF) {
                         printf("error: unfinished input\n");
                         return 0;
@@ -80,13 +89,14 @@ int main() {
                     if (type == EQA) {
                         var_init[last_var - 'a'] = true;
                         var[last_var - 'a'] = pop();
+                        j++; // token EQA has been consumed, jump to next
                     } else {
                         if (var_init[last_var - 'a']) {
                             push(var[last_var - 'a']);
+                            j--; // the token is not EQA, go back
                         } else {
                             printf("error: trying to use an unintialized variable %c\n", last_var);
                         }
-                        goto matching;
                     }
                     break;
                 case ANS:
@@ -96,30 +106,34 @@ int main() {
                         push(ans);
                     }
                     break;
-                case '+':
-                    push(pop() + pop());
-                    break;
-                case '-':
-                    op2 = pop();
-                    push(pop() - op2);
-                    break;
-                case '*':
-                    push(pop() * pop());
-                    break;
-                case '/':
-                    op2 = pop();
-                    if (op2 == 0.0)
-                        printf("error: zero divisor\n");
-                    else
-                        push(pop() / op2);
-                    break;
-                case '%':
-                    op2 = pop();
-                    if (op2 == 0.0)
-                        printf("error: zero divisor\n");
-                    else
-                        push(fmod(pop(), op2));
-                    break;
+                case ONECHAROP:
+                    switch (s[j][0]) {
+                        case '+':
+                            push(pop() + pop());
+                            break;
+                        case '-':
+                            op2 = pop();
+                            push(pop() - op2);
+                            break;
+                        case '*':
+                            push(pop() * pop());
+                            break;
+                        case '/':
+                            op2 = pop();
+                            if (op2 == 0.0)
+                                printf("error: zero divisor\n");
+                            else
+                                push(pop() / op2);
+                            break;
+                        case '%':
+                            op2 = pop();
+                            if (op2 == 0.0)
+                                printf("error: zero divisor\n");
+                            else
+                                push(fmod(pop(), op2));
+                            break;
+                        break;
+                    }
                 case SIN:
                     push(sin(pop()));
                     break;
@@ -136,13 +150,9 @@ int main() {
                     op2 = pop();
                     push(pow(pop(), op2));
                     break;
-                case '\n':
-                    ans_init = true;
-                    ans = pop();
-                    printf("\t%.8g\n", ans);
-                    break;
                 case ERR_ILLEGAL_NUMBER:
                     printf("getop: illegal number %s\n", s[j]);
+                    break;
                 case ERR_ILLEGAL_COMMAND:
                     printf("error: illegal command %s\n", s[j]);
                     break;
@@ -153,13 +163,17 @@ int main() {
                     printf("error: unknown input %s\n", s[j]);
                     break;
             }
+            // after operation done, output the results
+            ans_init = true;
+            ans = pop();
+            printf("\t%.8g\n", ans);
         }
-
-        // destruct everything
-        free(l);
+        // destruct token list
         for (j = 0; j < LINE_TOKENS; j++)
             free(s[j]);
         free(s);
     }
+    // destroy line buffer
+    free(l);
     return 0;
 }
