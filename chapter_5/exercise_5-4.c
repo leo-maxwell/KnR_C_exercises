@@ -20,5 +20,8 @@ int main() {
     strcpy(u, "hello");
     assert(strend(s, t) == 1);
     assert(strend(s, u) == 0);
+    free(s);
+    free(t);
+    free(u);
     return 0;
 }
